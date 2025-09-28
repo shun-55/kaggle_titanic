@@ -1,0 +1,59 @@
+import pandas as pd
+import numpy as np
+import os
+os.listdir("/content") #データが入っているかの確認
+train=pd.read_csv("/content/train.csv")
+test=pd.read_csv("/content/test.csv")
+train.head()
+train.info()
+train.describe()
+train.head()
+#ここまではどんなデータが入っているかの確認
+
+#ここからは前処理に入る.まずは欠損値を埋める（ageとembarked)(cabinも欠損地があるがあまりにも多いのでもはや最初からデータとして扱わないらしい)
+#後でテスト用のデータも使うためテスト用の方にも値を入れておく
+train["Age"].fillna(train["Age"].median(), inplace=True)#medianは中央値→外れ値の影響を受けにくい
+test["Age"].fillna(test["Age"].median(), inplace=True)
+train["Embarked"].fillna(train["Embarked"].mode()[0], inplace=True)#modeは最頻値、embarkedはそんなに欠損値がない（3個だけ）
+test["Embarked"].fillna(test["Embarked"].mode()[0], inplace=True)
+#ちゃんと埋まっているかどうかの確認
+train.describe()#describeは数値データのみを対象とするのでembarkedの確認にはほかの方法で行う必要がある
+train["Embarked"].isnull().sum()#embarkedの欠損値の合計を出す命令、これが0になっていれば問題はない
+train.info()
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+
+#trainとembarkedについては数値データに変換する必要がある
+train["Sex"]=train["Sex"].map({"male":0, "female":1})#mapは数値ひとつづつに対して新しい値を返す命令
+test["Sex"]=test["Sex"].map({"male":0, "female":1})
+
+train=pd.get_dummies(train, columns=["Embarked"])#三つの列を追加し該当する乗船港が1で表示される
+test=pd.get_dummies(test, columns=["Embarked"])
+
+
+#xは特徴変数yを目的変数に変える
+x=train[["Pclass", "Sex", "Age", "Fare", "Embarked_C", "Embarked_Q", "Embarked_S"]]
+y=train["Survived"]
+
+#学習と評価を分ける、今回は本当は分ける必要はないが、本来はこういう手順でやるので練習として行う
+x_train, x_test, y_train, y_test=train_test_split(x, y, test_size=0.3, random_state=0)
+#０．３はどれだけの割合をテストに使うか、０はランダムの種類を表す（同じ数字だと同じランダムが数字を変えるとランダムの方法も変わる
+
+#モデル学習
+model=LogisticRegression(max_iter=1000)
+model.fit(x_train, y_train)
+
+#精度の評価
+y_pred=model.predict(x_test)
+accuracy_score(y_test, y_pred)
+
+#本番
+model=LogisticRegression(max_iter=1000)
+model.fit(x, y)
+
+#精度の評価
+y_pred=model.predict(x)
+accuracy_score(y, y_pred)
+
